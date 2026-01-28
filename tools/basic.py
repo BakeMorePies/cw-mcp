@@ -3,14 +3,15 @@
 Basic tools for Cloudways MCP Server
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastmcp import Context
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from server import mcp
 from auth.customer import get_customer_from_headers
 from auth.rate_limit import get_rate_limit_status
 from utils.api_client import make_api_request
+from config import CLOUDWAYS_DEFAULT_SERVER_ID
 
 # Shared components (will be injected by main.py)
 redis_client = None
@@ -18,10 +19,10 @@ http_client = None
 token_manager = None
 
 class ServerIdParam(BaseModel):
-    server_id: int
+    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, description="Server ID (optional if default is set)")
 
 class AppParams(BaseModel):
-    server_id: int
+    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, description="Server ID (optional if default is set)")
     app_id: int
 
 @mcp.tool

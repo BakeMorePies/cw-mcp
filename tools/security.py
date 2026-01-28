@@ -3,12 +3,13 @@
 Security management tools for Cloudways MCP Server
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastmcp import Context
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from server import mcp
 from utils.api_client import make_api_request, make_api_request_post
+from config import CLOUDWAYS_DEFAULT_SERVER_ID
 
 # Shared components (will be injected by main.py)
 redis_client = None
@@ -16,11 +17,11 @@ http_client = None
 token_manager = None
 
 class AppParams(BaseModel):
-    server_id: int
+    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, description="Server ID (optional if default is set)")
     app_id: int
 
 class ServerIdParam(BaseModel):
-    server_id: int
+    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, description="Server ID (optional if default is set)")
 
 class SSLCertParam(BaseModel):
     server_id: int

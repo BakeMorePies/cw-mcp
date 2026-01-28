@@ -16,6 +16,11 @@ ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
     raise ValueError("ENCRYPTION_KEY environment variable is required")
 
+# Cloudways Default Server ID (optional - for single-server setups)
+CLOUDWAYS_DEFAULT_SERVER_ID = os.getenv("CLOUDWAYS_SERVER_ID")
+if CLOUDWAYS_DEFAULT_SERVER_ID:
+    CLOUDWAYS_DEFAULT_SERVER_ID = int(CLOUDWAYS_DEFAULT_SERVER_ID)
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 REDIS_POOL_SIZE = int(os.getenv("REDIS_POOL_SIZE", "500"))
 HTTP_POOL_SIZE = int(os.getenv("HTTP_POOL_SIZE", "500"))
