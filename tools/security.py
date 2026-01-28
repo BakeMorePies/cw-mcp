@@ -16,12 +16,20 @@ redis_client = None
 http_client = None  
 token_manager = None
 
+def get_server_id(provided_id: Optional[int]) -> int:
+    """Get server ID with fallback to default"""
+    if provided_id is not None:
+        return provided_id
+    if CLOUDWAYS_DEFAULT_SERVER_ID is not None:
+        return CLOUDWAYS_DEFAULT_SERVER_ID
+    raise ValueError("server_id is required. Set CLOUDWAYS_SERVER_ID in .env or provide server_id parameter")
+
 class AppParams(BaseModel):
-    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, description="Server ID (optional if default is set)")
+    server_id: Optional[int] = Field(default=None, description="Server ID (optional if CLOUDWAYS_SERVER_ID env var is set)")
     app_id: int
 
 class ServerIdParam(BaseModel):
-    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, description="Server ID (optional if default is set)")
+    server_id: Optional[int] = Field(default=None, description="Server ID (optional if CLOUDWAYS_SERVER_ID env var is set)")
 
 class SSLCertParam(BaseModel):
     server_id: int
@@ -140,13 +148,18 @@ async def get_whitelisted_ips_ssh(ctx: Context, server: ServerIdParam) -> Dict[s
     Get list of whitelisted IPs for SSH/SFTP access.
     
     Args:
-        server: ServerIdParam object containing server_id
+        server: ServerIdParam object containing server_id (optional if CLOUDWAYS_SERVER_ID is set)
     
     Returns:
         Dictionary containing whitelisted IPs for SSH/SFTP
     """
+    try:
+        server_id = get_server_id(server.server_id)
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
+    
     return await make_api_request(ctx, "/security/whitelisted", {
-        "server_id": server.server_id
+        "server_id": server_id
     }, redis_client, http_client, token_manager)
 
 @mcp.tool
@@ -155,13 +168,18 @@ async def get_whitelisted_ips_mysql(ctx: Context, server: ServerIdParam) -> Dict
     Get list of whitelisted IPs for MySQL connections.
     
     Args:
-        server: ServerIdParam object containing server_id
+        server: ServerIdParam object containing server_id (optional if CLOUDWAYS_SERVER_ID is set)
     
     Returns:
         Dictionary containing whitelisted IPs for MySQL
     """
+    try:
+        server_id = get_server_id(server.server_id)
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
+    
     return await make_api_request(ctx, "/security/whitelistedIpsMysql", {
-        "server_id": server.server_id
+        "server_id": server_id
     }, redis_client, http_client, token_manager)
 
 class WhitelistIPParam(BaseModel):

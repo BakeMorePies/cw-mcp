@@ -17,7 +17,7 @@ http_client = None
 token_manager = None
 
 class AppParams(BaseModel):
-    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, description="Server ID (optional if default is set)")
+    server_id: Optional[int] = Field(default=None, description="Server ID (optional if CLOUDWAYS_SERVER_ID env var is set)")
     app_id: int
 
 @mcp.tool

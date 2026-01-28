@@ -17,10 +17,10 @@ http_client = None
 token_manager = None
 
 class ServerIdParam(BaseModel):
-    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, gt=0, le=999999999, description="Valid server ID (optional if default is set)")
+    server_id: Optional[int] = Field(default=None, gt=0, le=999999999, description="Valid server ID (optional if CLOUDWAYS_SERVER_ID env var is set)")
 
 class ServerOperationParam(BaseModel):
-    server_id: Optional[int] = Field(default=CLOUDWAYS_DEFAULT_SERVER_ID, gt=0, le=999999999, description="Valid server ID (optional if default is set)")
+    server_id: Optional[int] = Field(default=None, gt=0, le=999999999, description="Valid server ID (optional if CLOUDWAYS_SERVER_ID env var is set)")
 
 @mcp.tool
 async def start_server(ctx: Context, server: ServerIdParam) -> Dict[str, Any]:
