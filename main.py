@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Production-grade FastMCP HTTP Server for Cloudways API
+BakeMorePies Edition - Token-based Authentication
 """
 
 import asyncio
@@ -10,6 +11,10 @@ import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import uvicorn
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from server import mcp
 from config import REDIS_URL, REDIS_POOL_SIZE, HTTP_POOL_SIZE, configure_logging
@@ -149,11 +154,12 @@ def main():
 
     # Production configuration
     workers = int(os.getenv("WORKERS", "1"))  # Single worker for MCP compatibility
+    port = int(os.getenv("PORT", "7002"))
 
     print("=" * 50)
     print("🚀 Cloudways MCP Server (Production)")
     print(f"Workers: {workers}")
-    print(f"Port: 7000")
+    print(f"Port: {port}")
     print("=" * 50)
 
     # For MCP: use single worker to maintain session state
@@ -161,7 +167,7 @@ def main():
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=7000,
+        port=port,
         workers=workers,
         loop="uvloop" if workers == 1 else "asyncio",  # uvloop for single worker
         log_level="info",
@@ -172,11 +178,13 @@ def main():
 if __name__ == "__main__":
     # For development: single worker with reload
     import sys
+    import os
     if "--dev" in sys.argv:
+        port = int(os.getenv("PORT", "7002"))
         uvicorn.run(
             "main:app",
             host="0.0.0.0",
-            port=7000,
+            port=port,
             reload=True,
             log_level="debug"
         )

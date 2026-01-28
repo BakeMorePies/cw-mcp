@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Customer management for Cloudways MCP Server
+Customer management for Cloudways MCP Server - BakeMorePies Edition
+Token-based authentication for team members
 """
 
 import json
 import hashlib
+import os
 from datetime import datetime, timezone
 from typing import Optional
 import redis.asyncio as redis
@@ -13,38 +15,56 @@ from fastmcp.server.dependencies import get_http_request
 import structlog
 
 from config import fernet
+from auth.user_tokens import UserTokenManager
 
 logger = structlog.get_logger(__name__)
 
 class Customer:
     def __init__(self, customer_id: str, email: str, cloudways_email: str, 
-                 cloudways_api_key: str, created_at: datetime):
+                 cloudways_api_key: str, username: str, created_at: datetime):
         self.customer_id = customer_id
         self.email = email
         self.cloudways_email = cloudways_email
         self.cloudways_api_key = cloudways_api_key
+        self.username = username
         self.created_at = datetime.now(timezone.utc)
         self.last_seen = datetime.now(timezone.utc)
 
+# Global token manager instance
+token_manager = UserTokenManager()
+
 async def get_customer_from_headers(ctx: Context, redis_client: Optional[redis.Redis] = None) -> Optional[Customer]:
-    """Extract customer information from request headers"""
+    """
+    Extract customer information from request headers.
+    Uses token-based authentication for BakeMorePies team members.
+    Cloudways credentials are read from server-side .env file only.
+    """
     try:
         http_request = get_http_request()
-        email = http_request.headers.get("x-cloudways-email")
-        api_key = http_request.headers.get("x-cloudways-api-key")
-
-        if not email or not api_key:
-            # Log authentication failure
-            try:
-                from ..utils.logging import log_authentication_event
-                log_authentication_event("auth_failed", "unknown", False, {
-                    "reason": "missing_credentials",
-                    "email_provided": bool(email),
-                    "api_key_provided": bool(api_key)
-                })
-            except:
-                pass
-            raise ValueError("Missing authentication headers")
+        
+        # Get user token from header
+        user_token = http_request.headers.get("x-user-token")
+        
+        if not user_token:
+            logger.warning("Missing user token in request")
+            raise ValueError("Missing authentication: x-user-token header required")
+        
+        # Validate user token
+        user = token_manager.validate_token(user_token)
+        if not user:
+            logger.warning("Invalid user token attempted")
+            raise ValueError("Invalid authentication token")
+        
+        username = user.get("username")
+        user_email = user.get("email", username)
+        
+        # Get server-side Cloudways credentials from environment
+        cloudways_email = os.getenv("CLOUDWAYS_EMAIL")
+        cloudways_api_key = os.getenv("CLOUDWAYS_API_KEY")
+        
+        if not cloudways_email or not cloudways_api_key:
+            logger.error("Server misconfiguration: Cloudways credentials not set in .env")
+            raise ValueError("Server configuration error: Contact administrator")
         
         # Get session identifier from MCP context or headers
         session_id = getattr(ctx, 'session_id', None) or http_request.headers.get('x-mcp-session-id')
@@ -54,9 +74,10 @@ async def get_customer_from_headers(ctx: Context, redis_client: Optional[redis.R
             import secrets
             session_id = secrets.token_urlsafe(32)
         
-        # Include session in customer ID to ensure session isolation
-        customer_hash = hashlib.sha256(f"{email}:{api_key}:{session_id}".encode()).hexdigest()
-        customer_id = f"customer_{customer_hash[:16]}"
+        # Create unique customer ID based on username and session
+        # This ensures session isolation while allowing user identification
+        customer_hash = hashlib.sha256(f"{username}:{session_id}".encode()).hexdigest()
+        customer_id = f"user_{customer_hash[:16]}"
         
         # Check cache
         if redis_client:
@@ -71,30 +92,48 @@ async def get_customer_from_headers(ctx: Context, redis_client: Optional[redis.R
                         email=data["email"],
                         cloudways_email=data["cloudways_email"],
                         cloudways_api_key=decrypted_key,
+                        username=data["username"],
                         created_at=datetime.fromisoformat(data["created_at"])
                     )
-                    logger.debug("Customer loaded from cache", customer_id=customer_id, customer_email=customer.email)
+                    logger.debug("User session loaded from cache", 
+                               customer_id=customer_id, 
+                               username=customer.username)
                     return customer
             except Exception as e:
-                logger.warning("Failed to load customer from cache", error=str(e))
+                logger.warning("Failed to load session from cache", error=str(e))
         
-        # Create new customer
-        customer = Customer(customer_id, email, email, api_key, datetime.now(timezone.utc))
+        # Create new customer session
+        customer = Customer(
+            customer_id=customer_id,
+            email=user_email,
+            cloudways_email=cloudways_email,
+            cloudways_api_key=cloudways_api_key,
+            username=username,
+            created_at=datetime.now(timezone.utc)
+        )
+        
         await _cache_customer(customer, redis_client)
-        logger.info("New customer created", customer_id=customer_id, customer_email=customer.email)
+        
+        logger.info("New user session created", 
+                   customer_id=customer_id, 
+                   username=username,
+                   user_email=user_email)
         
         # Log security event
         try:
-            from ..utils.logging import log_authentication_event
-            log_authentication_event("new_customer", customer_id, True, {
-                "email": email,
-                "ip_address": getattr(http_request.client, 'host', 'unknown') if http_request.client else 'unknown'
-            })
+            ip_address = getattr(http_request.client, 'host', 'unknown') if http_request.client else 'unknown'
+            logger.info("User authenticated successfully",
+                       username=username,
+                       ip_address=ip_address,
+                       customer_id=customer_id)
         except:
-            pass  # Don't fail customer creation if logging fails
+            pass
         
         return customer
         
+    except ValueError as e:
+        logger.error("Authentication failed", error=str(e))
+        raise
     except Exception as e:
         logger.error("Failed to get customer from headers", error=str(e))
         return None
@@ -111,6 +150,7 @@ async def _cache_customer(customer: Customer, redis_client: Optional[redis.Redis
             "email": customer.email,
             "cloudways_email": customer.cloudways_email,
             "encrypted_api_key": encrypted_api_key,
+            "username": customer.username,
             "created_at": customer.created_at.isoformat(),
             "last_seen": customer.last_seen.isoformat()
         }

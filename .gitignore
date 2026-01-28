@@ -162,6 +162,7 @@ secrets.json
 # MCP Server specific
 mcp-server.log
 debug.log
+users.json
 
 # Node modules (if any JavaScript tooling)
 node_modules/
