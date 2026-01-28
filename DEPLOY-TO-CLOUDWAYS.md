@@ -138,7 +138,7 @@ sudo nano /etc/nginx/sites-available/cloudways-mcp
 ```nginx
 server {
     listen 80;
-    server_name cloudways-mcp.bakemorepies.com;  # Change to your domain
+    server_name cw-mcp.bmpweb.dev;
 
     location / {
         proxy_pass http://localhost:8000;
@@ -180,7 +180,7 @@ sudo systemctl reload nginx
 sudo apt install certbot python3-certbot-nginx -y
 
 # Obtain SSL certificate
-sudo certbot --nginx -d cloudways-mcp.bakemorepies.com
+sudo certbot --nginx -d cw-mcp.bmpweb.dev
 ```
 
 ### 10. Add Team Members
@@ -201,7 +201,7 @@ python manage_users.py list
 
 ```bash
 # Test health endpoint
-curl https://cloudways-mcp.bakemorepies.com/health
+curl https://cw-mcp.bmpweb.dev/health
 
 # Expected response:
 # {"status":"healthy","redis":true,"initialized":true}
@@ -219,7 +219,7 @@ After deployment, team members update their `~/.cursor/mcp.json`:
       "args": [
         "-y",
         "mcp-remote",
-        "https://cloudways-mcp.bakemorepies.com/mcp/mcp",
+        "https://cw-mcp.bmpweb.dev/mcp/mcp",
         "--header",
         "x-user-token: [their-token]"
       ]
@@ -332,7 +332,7 @@ sudo tail -f /var/log/nginx/error.log
 
 1. **Check firewall:** Ensure ports 80/443 are open
 2. **Check SSL:** Verify certificate is valid
-3. **Test endpoint:** `curl https://cloudways-mcp.bakemorepies.com/health`
+3. **Test endpoint:** `curl https://cw-mcp.bmpweb.dev/health`
 4. **Check token:** Verify user token is valid
 
 ## Backup and Recovery
