@@ -64,7 +64,7 @@ def main():
             print('      "command": "npx",')
             print('      "args": [')
             print('        "-y", "mcp-remote",')
-            print('        "http://localhost:7001/mcp/mcp",')
+            print('        "https://cw-mcp.bmpweb.dev/mcp/mcp",')
             print(f'        "--header", "x-user-token: {token}"')
             print('      ]')
             print('    }')
