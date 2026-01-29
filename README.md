@@ -1,5 +1,7 @@
 # Cloudways MCP Server
 
+**Status:** ✅ Production Ready | **URL:** https://cw-mcp.bmpweb.dev
+
 A Model Context Protocol (MCP) server for managing Cloudways infrastructure. Provides a secure, modular interface to the Cloudways API with **43+ tools** covering server and application management.
 
 ## Features
