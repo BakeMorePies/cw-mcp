@@ -73,12 +73,26 @@ async def make_api_request(ctx: Context, endpoint: str, params: Optional[Dict[st
         
     except httpx.HTTPStatusError as e:
         request_time = time.time() - start_time
+        
+        # Try to get detailed error message from response
+        error_details = None
+        try:
+            error_details = e.response.json()
+        except:
+            error_details = e.response.text[:500]
+        
         logger.error("API request failed - HTTP error", 
                     endpoint=endpoint, 
                     status_code=e.response.status_code,
                     request_time_ms=round(request_time * 1000, 2),
-                    response_text=e.response.text[:200])
-        return {"status": "error", "message": f"HTTP error: {e.response.status_code}"}
+                    error_details=error_details)
+        
+        return {
+            "status": "error", 
+            "message": f"HTTP error: {e.response.status_code}",
+            "details": error_details,  # Include actual error details!
+            "endpoint": endpoint
+        }
     except Exception as e:
         request_time = time.time() - start_time
         logger.error("API request failed - exception", 
@@ -115,8 +129,24 @@ async def make_api_request_post(ctx: Context, endpoint: str, data: Optional[Dict
         return result
         
     except httpx.HTTPStatusError as e:
-        logger.error("API POST request failed", endpoint=endpoint, status_code=e.response.status_code)
-        return {"status": "error", "message": f"HTTP error: {e.response.status_code}"}
+        # Try to get detailed error message from response
+        error_details = None
+        try:
+            error_details = e.response.json()
+        except:
+            error_details = e.response.text[:500]  # First 500 chars if not JSON
+        
+        logger.error("API POST request failed", 
+                    endpoint=endpoint, 
+                    status_code=e.response.status_code,
+                    error_details=error_details)
+        
+        return {
+            "status": "error", 
+            "message": f"HTTP error: {e.response.status_code}",
+            "details": error_details,  # Include the actual error details!
+            "endpoint": endpoint
+        }
     except Exception as e:
         logger.error("API POST request failed", endpoint=endpoint, error=str(e))
         return {"status": "error", "message": f"Request failed: {str(e)}"}

@@ -315,21 +315,39 @@ async def git_clone(ctx: Context, params: GitCloneParam) -> Dict[str, Any]:
         "branch": params.branch
     }, redis_client, http_client, token_manager)
 
+class GitPullParam(BaseModel):
+    server_id: Optional[int] = Field(default=None, description="Server ID (optional if CLOUDWAYS_SERVER_ID env var is set)")
+    app_id: int
+    branch: Optional[str] = Field(default=None, description="Git branch to pull from (optional, uses configured branch if not specified)")
+    git_url: Optional[str] = Field(default=None, description="Git repository URL (optional, uses configured URL if not specified)")
+
 @mcp.tool
-async def git_pull(ctx: Context, app: AppParams) -> Dict[str, Any]:
+async def git_pull(ctx: Context, params: GitPullParam) -> Dict[str, Any]:
     """
     Pull latest changes from Git repository and deploy.
     
     Args:
-        app: AppParams object containing server_id and app_id
+        params: GitPullParam object containing server_id, app_id, and optional branch/git_url
     
     Returns:
-        Dictionary containing Git pull operation status
+        Dictionary containing Git pull operation status with detailed error messages if it fails
+        
+    Example:
+        Success: {"status": "success", "operation_id": "123456"}
+        Error: {"status": "error", "message": "HTTP error: 422", "details": {"branch": "Branch not found"}}
     """
-    return await make_api_request_post(ctx, "/git/pull", {
-        "server_id": app.server_id,
-        "app_id": app.app_id
-    }, redis_client, http_client, token_manager)
+    data = {
+        "server_id": params.server_id,
+        "app_id": params.app_id
+    }
+    
+    # Add optional parameters if provided
+    if params.branch:
+        data["branch"] = params.branch
+    if params.git_url:
+        data["git_url"] = params.git_url
+    
+    return await make_api_request_post(ctx, "/git/pull", data, redis_client, http_client, token_manager)
 
 @mcp.tool
 async def get_git_deployment_history(ctx: Context, app: AppParams) -> Dict[str, Any]:
