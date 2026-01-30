@@ -336,14 +336,20 @@ async def git_pull(ctx: Context, params: GitPullParam) -> Dict[str, Any]:
         Success: {"status": "success", "operation_id": "123456"}
         Error: {"status": "error", "message": "HTTP error: 422", "details": {"branch": "Branch not found"}}
     """
+    try:
+        server_id = get_server_id(params.server_id)
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
+    
     data = {
-        "server_id": params.server_id,
+        "server_id": server_id,
         "app_id": params.app_id
     }
     
     # Add optional parameters if provided
+    # Note: Cloudways API expects "branch_name" not "branch"
     if params.branch:
-        data["branch"] = params.branch
+        data["branch_name"] = params.branch  # API wants "branch_name"
     if params.git_url:
         data["git_url"] = params.git_url
     
